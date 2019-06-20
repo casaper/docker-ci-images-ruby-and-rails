@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # set -xeuo pipefail
 
-DOCKER_REPO_URL='casaper/docker-ci-images-ruby-and-rails-repo'
+DOCKER_REPOSITORY='casaper/docker-ci-images-ruby-and-rails-repo'
 REPO_WEB_URL='https://hub.docker.com/r/casaper/docker-ci-images-ruby-and-rails-repo'
 
 while test $# -gt 0; do
@@ -23,6 +23,7 @@ while test $# -gt 0; do
       echo $'\t--firefox-version\t\tbuild layer with Firefox version. One of latest, beta-latest, esr-latest or specific from http://releases.mozilla.org/pub/firefox/releases/'
       echo $'\t--freetds-version=\t\tbuild layer with freetds version - see ftp://ftp.freetds.org/pub/freetds/stable/'
       echo $'\t--push-to-hub\t\tpush all built tags to docker hub'" - see ${REPO_WEB_URL}"
+      echo $'\t--push-last-as-latest\tPush the last built image as well as latest tag - automaticly enables --push-to-hub flag'
 
       exit 0
       ;;
@@ -83,7 +84,14 @@ while test $# -gt 0; do
       ;;
     --push-to-hub)
       PUSH_TO_HUB=1
-      echo "- Pushing all built layers to docker hub ${DOCKER_REPO_URL}"
+      echo "- Pushing all built layers to docker hub ${DOCKER_REPOSITORY}"
+      shift
+      ;;
+    --push-last-as-latest)
+      PUSH_LAST_AS_LATEST=1
+      PUSH_TO_HUB=1
+      echo "- Pushing all built layers to docker hub ${DOCKER_REPOSITORY}"
+      echo "- pushing last built as latest tag as well"
       shift
       ;;
     *)
@@ -104,13 +112,15 @@ NO_EXTRA_DEBS_IN_TAG="${NO_EXTRA_DEBS_IN_TAG:-skip}"
 EXTRA_GEMS="${EXTRA_GEMS:-skip}"
 FREETDS_VERSION="${FREETDS_VERSION:-skip}"
 PUSH_TO_HUB="${PUSH_TO_HUB:-skip}"
+PUSH_LAST_AS_LATEST="${PUSH_LAST_AS_LATEST:-skip}"
 
 function push_to_docker_hub() {
+  echo "Pushing image '${1}' to docker repository"
   docker push "$1"
 }
 
 # build base image
-BASE_IMAGE_TAG="${DOCKER_REPO_URL}:ruby-${RUBY_VERSION}"
+BASE_IMAGE_TAG="${DOCKER_REPOSITORY}:ruby-${RUBY_VERSION}"
 echo "Building base image with ${RUBY_VERSION} with docker image tag ${BASE_IMAGE_TAG}"
 IMAGE_STACK_STRING="ruby:${RUBY_VERSION} with bundler ${BUNDLER_VERSION}"$'\n'"Tag: ${BASE_IMAGE_TAG}"$'\n\n'
 docker build -t "$BASE_IMAGE_TAG" --build-arg "ruby_version=${RUBY_VERSION}" --build-arg "bundler_version=${BUNDLER_VERSION}" -f Dockerfile .
@@ -180,6 +190,12 @@ if [ "$EXTRA_DEBS" != 'skip' ]; then
   IMAGE_STACK_STRING="${IMAGE_STACK_STRING}Extra packages: ${EXTRA_DEBS}"$'\n'"Tag: ${BASE_IMAGE_TAG}"$'\n\n'
   docker build -t "$BASE_IMAGE_TAG" --build-arg "base_image=${BASED_ON_TAG}" --build-arg "extra_debs=${EXTRA_DEBS}" -f extra_debs.Dockerfile .
   if [ "$PUSH_TO_HUB" == "1" ]; then push_to_docker_hub "$BASE_IMAGE_TAG"; fi
+fi
+
+if [ "$PUSH_LAST_AS_LATEST" == '1' ]; then
+  echo "pushing as latest"
+  docker tag "$BASE_IMAGE_TAG" "${DOCKER_REPOSITORY}:latest"
+  docker push "${DOCKER_REPOSITORY}:latest"
 fi
 
 echo "Built the following Images:"
