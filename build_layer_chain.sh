@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # set -xeuo pipefail
 
+DOCKER_REPO_URL='casaper/docker-ci-images-ruby-and-rails-repo'
+REPO_WEB_URL='https://hub.docker.com/r/casaper/docker-ci-images-ruby-and-rails-repo'
+
 while test $# -gt 0; do
   package='build_layer_chain'
   case "$1" in
@@ -19,6 +22,7 @@ while test $# -gt 0; do
       echo $'\t--chrome\t\tbuild layer with google-chrome-stable'
       echo $'\t--firefox-version\t\tbuild layer with Firefox version. One of latest, beta-latest, esr-latest or specific from http://releases.mozilla.org/pub/firefox/releases/'
       echo $'\t--freetds-version=\t\tbuild layer with freetds version - see ftp://ftp.freetds.org/pub/freetds/stable/'
+      echo $'\t--push-to-hub\t\tpush all built tags to docker hub'" - see ${REPO_WEB_URL}"
 
       exit 0
       ;;
@@ -77,6 +81,11 @@ while test $# -gt 0; do
       echo "- layer with FreeTDS ${FREETDS_VERSION}"
       shift
       ;;
+    --push-to-hub)
+      PUSH_TO_HUB=1
+      echo "- Pushing all built layers to docker hub ${DOCKER_REPO_URL}"
+      shift
+      ;;
     *)
       break
       ;;
@@ -94,14 +103,18 @@ CUSTOM_EXTRA_DEBS_EXT="${CUSTOM_EXTRA_DEBS_EXT:-skip}"
 NO_EXTRA_DEBS_IN_TAG="${NO_EXTRA_DEBS_IN_TAG:-skip}"
 EXTRA_GEMS="${EXTRA_GEMS:-skip}"
 FREETDS_VERSION="${FREETDS_VERSION:-skip}"
+PUSH_TO_HUB="${PUSH_TO_HUB:-skip}"
 
-echo "FreeTDS version ${FREETDS_VERSION}"
+function push_to_docker_hub() {
+  docker push "$1"
+}
 
 # build base image
-BASE_IMAGE_TAG="casaper/docker-ci-images-ruby-and-rails-repo:ruby-${RUBY_VERSION}"
+BASE_IMAGE_TAG="${DOCKER_REPO_URL}:ruby-${RUBY_VERSION}"
 echo "Building base image with ${RUBY_VERSION} with docker image tag ${BASE_IMAGE_TAG}"
 IMAGE_STACK_STRING="ruby:${RUBY_VERSION} with bundler ${BUNDLER_VERSION}"$'\n'"Tag: ${BASE_IMAGE_TAG}"$'\n\n'
 docker build -t "$BASE_IMAGE_TAG" --build-arg "ruby_version=${RUBY_VERSION}" --build-arg "bundler_version=${BUNDLER_VERSION}" -f Dockerfile .
+if [ "$PUSH_TO_HUB" == "1" ]; then push_to_docker_hub "$BASE_IMAGE_TAG"; fi
 
 if [ "$NODE_VERSION_INSTALL" != 'skip' ]; then
   BASED_ON_TAG="$BASE_IMAGE_TAG"
@@ -109,6 +122,7 @@ if [ "$NODE_VERSION_INSTALL" != 'skip' ]; then
   echo "Building node layer with version ${NODE_VERSION_INSTALL} with docker image tag ${BASE_IMAGE_TAG}"
   IMAGE_STACK_STRING="${IMAGE_STACK_STRING}Node version ${NODE_VERSION_INSTALL}"$'\n'"Tag: ${BASE_IMAGE_TAG}"$'\n\n'
   docker build -t "$BASE_IMAGE_TAG" --build-arg "base_image=${BASED_ON_TAG}" --build-arg "ci_node_version=${NODE_VERSION_INSTALL}" -f node.Dockerfile .
+  if [ "$PUSH_TO_HUB" == "1" ]; then push_to_docker_hub "$BASE_IMAGE_TAG"; fi
 fi
 
 if [ "$FIREFOX_VERSION" != 'skip' ]; then
@@ -117,6 +131,7 @@ if [ "$FIREFOX_VERSION" != 'skip' ]; then
   echo "Building firefox layer with version ${FIREFOX_VERSION} with docker image tag ${BASE_IMAGE_TAG}"
   IMAGE_STACK_STRING="${IMAGE_STACK_STRING}Firefox version ${FIREFOX_VERSION}"$'\n'"Tag: ${BASE_IMAGE_TAG}"$'\n\n'
   docker build -t "$BASE_IMAGE_TAG" --build-arg "base_image=${BASED_ON_TAG}" --build-arg "firefox_version=${FIREFOX_VERSION}" -f firefox.Dockerfile .
+  if [ "$PUSH_TO_HUB" == "1" ]; then push_to_docker_hub "$BASE_IMAGE_TAG"; fi
 fi
 
 
@@ -126,6 +141,7 @@ if [ "$FREETDS_VERSION" != 'skip' ]; then
   echo "Building FreeTDS layer with version ${FREETDS_VERSION} with docker image tag ${BASE_IMAGE_TAG}"
   IMAGE_STACK_STRING="${IMAGE_STACK_STRING}FreeTDS version ${FREETDS_VERSION}"$'\n'"Tag: ${BASE_IMAGE_TAG}"$'\n\n'
   docker build -t "$BASE_IMAGE_TAG" --build-arg "base_image=${BASED_ON_TAG}" --build-arg "freetds_version=${FREETDS_VERSION}" -f freetds.Dockerfile .
+  if [ "$PUSH_TO_HUB" == "1" ]; then push_to_docker_hub "$BASE_IMAGE_TAG"; fi
 fi
 
 if [ "$BUILD_CHROME_LAYER" != 'skip' ]; then
@@ -134,6 +150,7 @@ if [ "$BUILD_CHROME_LAYER" != 'skip' ]; then
   echo "Building chrome layer with docker image tag ${BASE_IMAGE_TAG}"
   IMAGE_STACK_STRING="${IMAGE_STACK_STRING}Google Chrome stable"$'\n'"Tag: ${BASE_IMAGE_TAG}"$'\n\n'
   docker build -t "$BASE_IMAGE_TAG" --build-arg "base_image=${BASED_ON_TAG}" -f chrome.Dockerfile .
+  if [ "$PUSH_TO_HUB" == "1" ]; then push_to_docker_hub "$BASE_IMAGE_TAG"; fi
 fi
 
 if [ "$EXTRA_GEMS" != 'skip' ]; then
@@ -142,6 +159,7 @@ if [ "$EXTRA_GEMS" != 'skip' ]; then
   echo "Building node layer with version ${EXTRA_GEMS} with docker image tag ${BASE_IMAGE_TAG}"
   IMAGE_STACK_STRING="${IMAGE_STACK_STRING}Node version ${EXTRA_GEMS}"$'\n'"Tag: ${BASE_IMAGE_TAG}"$'\n\n'
   docker build -t "$BASE_IMAGE_TAG" --build-arg "base_image=${BASED_ON_TAG}" --build-arg "extra_gems=${EXTRA_GEMS}" -f extra_gems.Dockerfile .
+  if [ "$PUSH_TO_HUB" == "1" ]; then push_to_docker_hub "$BASE_IMAGE_TAG"; fi
 fi
 
 if [ "$EXTRA_DEBS" != 'skip' ]; then
@@ -161,7 +179,11 @@ if [ "$EXTRA_DEBS" != 'skip' ]; then
   echo "With the packages: ${EXTRA_DEBS}"
   IMAGE_STACK_STRING="${IMAGE_STACK_STRING}Extra packages: ${EXTRA_DEBS}"$'\n'"Tag: ${BASE_IMAGE_TAG}"$'\n\n'
   docker build -t "$BASE_IMAGE_TAG" --build-arg "base_image=${BASED_ON_TAG}" --build-arg "extra_debs=${EXTRA_DEBS}" -f extra_debs.Dockerfile .
+  if [ "$PUSH_TO_HUB" == "1" ]; then push_to_docker_hub "$BASE_IMAGE_TAG"; fi
 fi
 
-echo "Built the following Images:"$'\n\n'
+echo "Built the following Images:"
+echo $'\n --- \n\n'
 echo "$IMAGE_STACK_STRING"
+
+exit 0
