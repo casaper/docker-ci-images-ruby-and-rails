@@ -9,7 +9,7 @@ while test $# -gt 0; do
       echo "$package [options]"$'\n'
       echo 'options:'
       echo $'\t-h, --help\t\t\tshow brief help'
-      echo $'\t--ruby-version=\t\tdefault is 2.5'
+      echo $'\t--ruby-version=\t\tdefault is 2.6'
       echo $'\t--bundler-version=\t\tdefault is skip - installs default'
       echo $'\t--extra-gems=\t\tpreinstall extra gems into a docker layer'
       echo $'\t--extra-debs=\t\ta space separated list of extra debian packages to install'
@@ -83,7 +83,7 @@ while test $# -gt 0; do
   esac
 done
 
-RUBY_VERSION="${RUBY_VERSION:-2.5}"
+RUBY_VERSION="${RUBY_VERSION:-2.6}"
 BUNDLER_VERSION="${BUNDLER_VERSION:-skip}"
 
 NODE_VERSION_INSTALL="${NODE_VERSION_INSTALL:-skip}"
