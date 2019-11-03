@@ -1,106 +1,15 @@
 #!/usr/bin/env bash
-# set -xeuo pipefail
 
-DOCKER_REPOSITORY='casaper/docker-ci-images-ruby-and-rails-repo'
 REPO_WEB_URL='https://hub.docker.com/r/casaper/docker-ci-images-ruby-and-rails-repo'
 
-while test $# -gt 0; do
-  package='build_layer_chain'
-  case "$1" in
-    -h|--help)
-      echo "$package - build a chain of docker image layers for ruby ci"$'\n'
-      echo "$package [options]"$'\n'
-      echo 'options:'
-      echo $'\t-h, --help\t\t\tshow brief help'
-      echo $'\t--ruby-version=\t\tdefault is 2.6'
-      echo $'\t--bundler-version=\t\tdefault is skip - installs default'
-      echo $'\t--extra-gems=\t\tpreinstall extra gems into a docker layer'
-      echo $'\t--extra-debs=\t\ta space separated list of extra debian packages to install'
-      echo $'\t--extra-debs-tag-extra\t\tno package list in extra deps layer tag - use -extra instead'
-      echo $'\t--extra-debs-custom-tag=\t\tdefine a custom tag to be added on extra debs layer'
-      echo $'\t--node-version=\t\tbuild node layer with version - options 8, 9 or 10'
-      echo $'\t--chrome\t\tbuild layer with google-chrome-stable'
-      echo $'\t--firefox-version\t\tbuild layer with Firefox version. One of latest, beta-latest, esr-latest or specific from http://releases.mozilla.org/pub/firefox/releases/'
-      echo $'\t--freetds-version=\t\tbuild layer with freetds version - see ftp://ftp.freetds.org/pub/freetds/stable/'
-      echo $'\t--push-to-hub\t\tpush all built tags to docker hub'" - see ${REPO_WEB_URL}"
-      echo $'\t--push-last-as-latest\tPush the last built image as well as latest tag - automaticly enables --push-to-hub flag'
-
-      exit 0
-      ;;
-    --ruby-version=*)
-      RUBY_VERSION="${1//--ruby-version=}"
-      echo "- base layer with ${RUBY_VERSION}"
-      shift
-      ;;
-    --bundler-version=*)
-      BUNDLER_VERSION="${1//--bundler-version=}"
-      echo "- bundler version installed ${BUNDLER_VERSION}"
-      shift
-      ;;
-    --extra-gems=*)
-      EXTRA_GEMS="${1//--extra-gems=}"
-      echo "- layer with extra gems preinstalled: ${EXTRA_GEMS}"
-      shift
-      ;;
-    --node-version=*)
-      NODE_VERSION_INSTALL="${1//--node-version=}"
-      echo "- Node layer with version ${NODE_VERSION_INSTALL}"
-      shift
-      ;;
-    --extra-debs=*)
-      EXTRA_DEBS="${1//--extra-debs=}"
-      echo "- layer with extra packages: ${EXTRA_DEBS}"
-      shift
-      ;;
-    --extra-debs-tag-extra)
-      NO_EXTRA_DEBS_IN_TAG="no-tag"
-      shift
-      ;;
-    --extra-debs-custom-tag=*)
-      CUSTOM_EXTRA_DEBS_EXT="${1//--extra-debs-custom-tag=}"
-      echo "- layer with extra pachages: ${CUSTOM_EXTRA_DEBS_EXT}"
-      shift
-      ;;
-    --chrome)
-      BUILD_CHROME_LAYER="build"
-      echo "-  Google Chrome stable layer"
-      shift
-      ;;
-    --firefox-version=*)
-      FIREFOX_TEMP="${1//--firefox-version=}"
-      FIREFOX_VERSION="${FIREFOX_TEMP:-latest}"
-      echo "- layer with Firefox ${FIREFOX_VERSION}"
-      shift
-      ;;
-    --firefox)
-      FIREFOX_VERSION="latest"
-      echo "- layer with Firefox ${FIREFOX_VERSION}"
-      shift
-      ;;
-    --freetds-version=*)
-      FREETDS_VERSION="${1//--freetds-version=}"
-      echo "- layer with FreeTDS ${FREETDS_VERSION}"
-      shift
-      ;;
-    --push-to-hub)
-      PUSH_TO_HUB=1
-      echo "- Pushing all built layers to docker hub ${DOCKER_REPOSITORY}"
-      shift
-      ;;
-    --push-last-as-latest)
-      PUSH_LAST_AS_LATEST=1
-      PUSH_TO_HUB=1
-      echo "- Pushing all built layers to docker hub ${DOCKER_REPOSITORY}"
-      echo "- pushing last built as latest tag as well"
-      shift
-      ;;
-    *)
-      break
-      ;;
-  esac
-done
+. ./lib.sh
+. ./build_layer_chain_options.sh
 
 RUBY_VERSION="${RUBY_VERSION:-2.6}"
+TAG_PREFIX="${SET_TAG_PREFIX:-ruby-}"
+if [ "$SET_TAG_PREFIX" = "none" ]; then
+  TAG_PREFIX=''
+fi
 BUNDLER_VERSION="${BUNDLER_VERSION:-skip}"
 
 NODE_VERSION_INSTALL="${NODE_VERSION_INSTALL:-skip}"
@@ -113,14 +22,11 @@ EXTRA_GEMS="${EXTRA_GEMS:-skip}"
 FREETDS_VERSION="${FREETDS_VERSION:-skip}"
 PUSH_TO_HUB="${PUSH_TO_HUB:-skip}"
 PUSH_LAST_AS_LATEST="${PUSH_LAST_AS_LATEST:-skip}"
-
-function push_to_docker_hub() {
-  echo "Pushing image '${1}' to docker repository"
-  docker push "$1"
-}
+DOCKER_REPOSITORY="${CUSTOM_REPO:-casaper/docker-ci-images-ruby-and-rails-repo}"
 
 # build base image
-BASE_IMAGE_TAG="${DOCKER_REPOSITORY}:ruby-${RUBY_VERSION}"
+BASE_IMAGE_TAG="${DOCKER_REPOSITORY}:${TAG_PREFIX}${RUBY_VERSION}"
+
 echo "Building base image with ${RUBY_VERSION} with docker image tag ${BASE_IMAGE_TAG}"
 IMAGE_STACK_STRING="ruby:${RUBY_VERSION} with bundler ${BUNDLER_VERSION}"$'\n'"Tag: ${BASE_IMAGE_TAG}"$'\n\n'
 docker build -t "$BASE_IMAGE_TAG" --build-arg "ruby_version=${RUBY_VERSION}" --build-arg "bundler_version=${BUNDLER_VERSION}" -f Dockerfile .
@@ -143,7 +49,6 @@ if [ "$FIREFOX_VERSION" != 'skip' ]; then
   docker build -t "$BASE_IMAGE_TAG" --build-arg "base_image=${BASED_ON_TAG}" --build-arg "firefox_version=${FIREFOX_VERSION}" -f firefox.Dockerfile .
   if [ "$PUSH_TO_HUB" == "1" ]; then push_to_docker_hub "$BASE_IMAGE_TAG"; fi
 fi
-
 
 if [ "$FREETDS_VERSION" != 'skip' ]; then
   BASED_ON_TAG="$BASE_IMAGE_TAG"
@@ -176,11 +81,7 @@ if [ "$EXTRA_DEBS" != 'skip' ]; then
   BASED_ON_TAG="$BASE_IMAGE_TAG"
   if [ "$NO_EXTRA_DEBS_IN_TAG" == 'no-tag' ]; then
     BASE_IMAGE_TAG="${BASE_IMAGE_TAG}-extra"
-  fi
-  if [ "$CUSTOM_EXTRA_DEBS_EXT" != 'skip' ]; then
-    BASE_IMAGE_TAG="${BASE_IMAGE_TAG}${CUSTOM_EXTRA_DEBS_EXT}"
-  fi
-  if [ "$CUSTOM_EXTRA_DEBS_EXT" == 'skip' ] && [ "$NO_EXTRA_DEBS_IN_TAG" != 'no-tag' ]; then
+  else
     for DEB_NAME in $EXTRA_DEBS; do
       BASE_IMAGE_TAG="${BASE_IMAGE_TAG}-${DEB_NAME}"
     done

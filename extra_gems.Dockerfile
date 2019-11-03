@@ -15,4 +15,5 @@ LABEL base=$base_image
 LABEL architecture="x86_64"
 LABEL vendor="Panter AG"
 
-RUN gem install ${extra_gems}
+RUN gem install ${extra_gems} \
+  && gem cleanup

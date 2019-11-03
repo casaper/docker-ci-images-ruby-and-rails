@@ -9,7 +9,7 @@
 #
 # Can by any plain version tag listed in: https://hub.docker.com/r/library/ruby/tags/
 # No slim, alpine, jessie or stretch tho. Just plain number tags.
-ARG ruby_version=2.5.1
+ARG ruby_version
 FROM ruby:$ruby_version
 
 # bundler_version - set specific bundler version to install
@@ -26,4 +26,5 @@ RUN /scripts/install_basics.sh "${bundler_version}" \
       && chmod a+rwx /cache \
       # some clean up before finishing this layer
       && rm -rf /var/lib/apt/lists/* \
-      && apt-get clean
+      && apt-get clean \
+      && gem cleanup
