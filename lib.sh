@@ -48,3 +48,34 @@ function push_to_docker_hub() {
   echo "Pushing image '${1}' to docker repository"
   docker push "$1"
 }
+
+function docker_build_with_args() {
+  BUILD_ARGS=''
+  ARGS=''
+  while test $# -gt 0; do
+    case "$1" in
+    -f | --file)
+      DOCKERFILE="$2"
+      shift
+      shift
+      ;;
+    -t | --tag)
+      TAG="$2"
+      shift
+      shift
+      ;;
+    *)
+      BUILD_ARGS="${BUILD_ARGS} ${1}"
+      shift
+      ;;
+    esac
+  done
+  for arg in $BUILD_ARGS; do
+    ARGS="${ARGS} --build-arg ${arg}"
+  done
+  echo "build args: $ARGS"
+
+  TAG="${TAG:-no-tag-given}"
+  DOCKERFILE="${DOCKERFILE:-Dockerfile}"
+  docker build -t "$TAG" $ARGS -f "$DOCKERFILE" .
+}

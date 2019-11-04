@@ -29,7 +29,8 @@ BASE_IMAGE_TAG="${DOCKER_REPOSITORY}:${TAG_PREFIX}${RUBY_VERSION}"
 
 echo "Building base image with ${RUBY_VERSION} with docker image tag ${BASE_IMAGE_TAG}"
 IMAGE_STACK_STRING="ruby:${RUBY_VERSION} with bundler ${BUNDLER_VERSION}"$'\n'"Tag: ${BASE_IMAGE_TAG}"$'\n\n'
-docker build -t "$BASE_IMAGE_TAG" --build-arg "ruby_version=${RUBY_VERSION}" --build-arg "bundler_version=${BUNDLER_VERSION}" -f Dockerfile .
+
+docker_build_with_args -t "$BASE_IMAGE_TAG" -f Dockerfile "ruby_version=${RUBY_VERSION}" "bundler_version=${BUNDLER_VERSION}"
 if [ "$PUSH_TO_HUB" == "1" ]; then push_to_docker_hub "$BASE_IMAGE_TAG"; fi
 
 if [ "$NODE_VERSION_INSTALL" != 'skip' ]; then
