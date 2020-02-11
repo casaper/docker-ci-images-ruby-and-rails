@@ -23,6 +23,7 @@ FREETDS_VERSION="${FREETDS_VERSION:-skip}"
 PUSH_TO_HUB="${PUSH_TO_HUB:-skip}"
 PUSH_LAST_AS_LATEST="${PUSH_LAST_AS_LATEST:-skip}"
 DOCKER_REPOSITORY="${CUSTOM_REPO:-casaper/docker-ci-images-ruby-and-rails-repo}"
+PHANTOMJS="${PHANTOMJS:-skip}"
 
 # build base image
 BASE_IMAGE_TAG="${DOCKER_REPOSITORY}:${TAG_PREFIX}${RUBY_VERSION}"
@@ -66,6 +67,15 @@ if [ "$BUILD_CHROME_LAYER" != 'skip' ]; then
   echo "Building chrome layer with docker image tag ${BASE_IMAGE_TAG}"
   IMAGE_STACK_STRING="${IMAGE_STACK_STRING}Google Chrome stable"$'\n'"Tag: ${BASE_IMAGE_TAG}"$'\n\n'
   docker build -t "$BASE_IMAGE_TAG" --build-arg "base_image=${BASED_ON_TAG}" -f chrome.Dockerfile .
+  if [ "$PUSH_TO_HUB" == "1" ]; then push_to_docker_hub "$BASE_IMAGE_TAG"; fi
+fi
+
+if [ "$PHANTOMJS" != 'skip' ]; then
+  BASED_ON_TAG="$BASE_IMAGE_TAG"
+  BASE_IMAGE_TAG="${BASE_IMAGE_TAG}-phantomjs"
+  echo "Building phantomjs layer with docker image tag ${BASE_IMAGE_TAG}"
+  IMAGE_STACK_STRING="${IMAGE_STACK_STRING}Phantomjs "$'\n'"Tag: ${BASE_IMAGE_TAG}"$'\n\n'
+  docker build -t "$BASE_IMAGE_TAG" --build-arg "base_image=${BASED_ON_TAG}" -f phantomjs.Dockerfile .
   if [ "$PUSH_TO_HUB" == "1" ]; then push_to_docker_hub "$BASE_IMAGE_TAG"; fi
 fi
 

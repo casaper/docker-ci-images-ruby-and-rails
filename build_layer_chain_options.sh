@@ -29,6 +29,9 @@ while test $# -gt 0; do
     TEXT='Build layer with google-chrome-stable'
     display_help_option "$HELP_INDENT" "$TEXT" 'chrome'
 
+    TEXT='Build layer with phantomjs'
+    display_help_option "$HELP_INDENT" "$TEXT" 'phantomjs'
+
     TEXT='Build layer with Firefox [latest|beta-latest|esr-latest] '$'\n'
     TEXT="${TEXT}${HELP_INDENT}Or specific version https://releases.mozilla.org/pub/firefox/releases/"
     display_help_option "$HELP_INDENT" "$TEXT" 'firefox-version' '=' 'latest'
@@ -146,6 +149,11 @@ while test $# -gt 0; do
   --push-to-hub)
     PUSH_TO_HUB=1
     echo "- Pushing all built layers to docker hub"
+    shift
+    ;;
+  --phantomjs)
+    PHANTOMJS=1
+    echo "- Build with phantomjs layer"
     shift
     ;;
   --push-last-as-latest)
