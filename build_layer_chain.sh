@@ -34,6 +34,22 @@ IMAGE_STACK_STRING="ruby:${RUBY_VERSION} with bundler ${BUNDLER_VERSION}"$'\n'"T
 docker_build_with_args -t "$BASE_IMAGE_TAG" -f Dockerfile "ruby_version=${RUBY_VERSION}" "bundler_version=${BUNDLER_VERSION}"
 if [ "$PUSH_TO_HUB" == "1" ]; then push_to_docker_hub "$BASE_IMAGE_TAG"; fi
 
+if [ "$EXTRA_DEBS" != 'skip' ]; then
+  BASED_ON_TAG="$BASE_IMAGE_TAG"
+  if [ "$NO_EXTRA_DEBS_IN_TAG" == 'no-tag' ]; then
+    BASE_IMAGE_TAG="${BASE_IMAGE_TAG}-extra"
+  else
+    for DEB_NAME in $EXTRA_DEBS; do
+      BASE_IMAGE_TAG="${BASE_IMAGE_TAG}-${DEB_NAME}"
+    done
+  fi
+  echo "Building extra packages layer with docker image tag ${BASE_IMAGE_TAG}"
+  echo "With the packages: ${EXTRA_DEBS}"
+  IMAGE_STACK_STRING="${IMAGE_STACK_STRING}Extra packages: ${EXTRA_DEBS}"$'\n'"Tag: ${BASE_IMAGE_TAG}"$'\n\n'
+  docker build -t "$BASE_IMAGE_TAG" --build-arg "base_image=${BASED_ON_TAG}" --build-arg "extra_debs=${EXTRA_DEBS}" -f extra_debs.Dockerfile .
+  if [ "$PUSH_TO_HUB" == "1" ]; then push_to_docker_hub "$BASE_IMAGE_TAG"; fi
+fi
+
 if [ "$NODE_VERSION_INSTALL" != 'skip' ]; then
   BASED_ON_TAG="$BASE_IMAGE_TAG"
   BASE_IMAGE_TAG="${BASE_IMAGE_TAG}-node${NODE_VERSION_INSTALL}"
@@ -85,22 +101,6 @@ if [ "$EXTRA_GEMS" != 'skip' ]; then
   echo "Building node layer with version ${EXTRA_GEMS} with docker image tag ${BASE_IMAGE_TAG}"
   IMAGE_STACK_STRING="${IMAGE_STACK_STRING}Node version ${EXTRA_GEMS}"$'\n'"Tag: ${BASE_IMAGE_TAG}"$'\n\n'
   docker build -t "$BASE_IMAGE_TAG" --build-arg "base_image=${BASED_ON_TAG}" --build-arg "extra_gems=${EXTRA_GEMS}" -f extra_gems.Dockerfile .
-  if [ "$PUSH_TO_HUB" == "1" ]; then push_to_docker_hub "$BASE_IMAGE_TAG"; fi
-fi
-
-if [ "$EXTRA_DEBS" != 'skip' ]; then
-  BASED_ON_TAG="$BASE_IMAGE_TAG"
-  if [ "$NO_EXTRA_DEBS_IN_TAG" == 'no-tag' ]; then
-    BASE_IMAGE_TAG="${BASE_IMAGE_TAG}-extra"
-  else
-    for DEB_NAME in $EXTRA_DEBS; do
-      BASE_IMAGE_TAG="${BASE_IMAGE_TAG}-${DEB_NAME}"
-    done
-  fi
-  echo "Building extra packages layer with docker image tag ${BASE_IMAGE_TAG}"
-  echo "With the packages: ${EXTRA_DEBS}"
-  IMAGE_STACK_STRING="${IMAGE_STACK_STRING}Extra packages: ${EXTRA_DEBS}"$'\n'"Tag: ${BASE_IMAGE_TAG}"$'\n\n'
-  docker build -t "$BASE_IMAGE_TAG" --build-arg "base_image=${BASED_ON_TAG}" --build-arg "extra_debs=${EXTRA_DEBS}" -f extra_debs.Dockerfile .
   if [ "$PUSH_TO_HUB" == "1" ]; then push_to_docker_hub "$BASE_IMAGE_TAG"; fi
 fi
 
