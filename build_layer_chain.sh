@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-REPO_WEB_URL='https://hub.docker.com/r/casaper/docker-ci-images-ruby-and-rails-repo'
+REPO_WEB_URL='https://git.panter.ch/vok/rails-docker-ci'
 
 . ./lib.sh
 . ./build_layer_chain_options.sh
@@ -22,7 +22,8 @@ EXTRA_GEMS="${EXTRA_GEMS:-skip}"
 FREETDS_VERSION="${FREETDS_VERSION:-skip}"
 PUSH_TO_HUB="${PUSH_TO_HUB:-skip}"
 PUSH_LAST_AS_LATEST="${PUSH_LAST_AS_LATEST:-skip}"
-DOCKER_REPOSITORY="${CUSTOM_REPO:-casaper/docker-ci-images-ruby-and-rails-repo}"
+DOCKER_REPOSITORY="git.panter.ch:5001/vok/rails-docker-ci"
+
 PHANTOMJS="${PHANTOMJS:-skip}"
 
 # build base image

@@ -1,7 +1,11 @@
 # Docker Images for CI with Rails
 
-[Docker Hub](https://hub.docker.com/r/casaper/docker-ci-images-ruby-and-rails-repo):  
-https://hub.docker.com/r/casaper/docker-ci-images-ruby-and-rails-repo
+- `docker pull git.panter.ch:5001/vok/rails-docker-ci:ruby-2.5.9`
+- `docker pull git.panter.ch:5001/vok/rails-docker-ci:ruby-2.5.9-imagemagick-mariadb-client-libmariadbclient-dev-ghostscript`
+- `docker pull git.panter.ch:5001/vok/rails-docker-ci:ruby-2.5.9-imagemagick-mariadb-client-libmariadbclient-dev-ghostscript-node14.x`
+- `docker pull git.panter.ch:5001/vok/rails-docker-ci:ruby-2.5.9-imagemagick-mariadb-client-libmariadbclient-dev-ghostscript-node14.x-chrome`
+
+They are basically just layers ontop of each others.
 
 ## The idea behind building with layers and pushing them as separate tags
 
